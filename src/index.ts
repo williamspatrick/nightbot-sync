@@ -1,6 +1,14 @@
 import express from 'express';
+import * as fs from 'fs';
+import YAML from 'yaml';
 import { TokenCallback } from './oauth';
 import * as Nightbot from './nightbot';
+
+if (process.argv.length < 3) {
+    console.log('Missing YAML file');
+}
+const path = process.argv[2];
+console.log(`Loading from ${path}`);
 
 const app = express();
 const port = 4000; // default port to listen
@@ -14,12 +22,13 @@ TokenCallback(app, port, async (token: string) => {
     const currentCommands = await Nightbot.commands(token);
     console.log('Current Commands', currentCommands);
 
-    const commands: { [key: string]: Nightbot.Command } = {
-        '!awesome': new Nightbot.Command(
-            '!awesome',
-            '$(user) is pretty awesome.',
-        ),
-    };
+    const yaml = YAML.parse(fs.readFileSync(path).toString());
+    var commands: { [key: string]: Nightbot.Command } = {}; // eslint-disable-line
+
+    Object.entries(yaml).forEach(([k, v]) => {
+        const c = new Nightbot.Command(k, v as Nightbot.CommandOptional);
+        commands[c.name] = c;
+    });
 
     currentCommands.forEach(async (c) => {
         console.log(`Command: ${c.name}`);

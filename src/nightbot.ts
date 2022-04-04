@@ -12,6 +12,12 @@ export enum UserLevel {
     Everyone = 'everyone',
 }
 
+export interface CommandOptional {
+    message?: string;
+    userLevel?: UserLevel;
+    coolDown?: number;
+}
+
 export class Command {
     _id?: string; /* eslint-disable no-underscore-dangle */
 
@@ -23,16 +29,15 @@ export class Command {
 
     userLevel: UserLevel;
 
-    constructor(
-        name: string,
-        message: string,
-        userLevel: UserLevel = UserLevel.Everyone,
-        coolDown = 5,
-    ) {
-        this.name = name;
-        this.message = message;
-        this.userLevel = userLevel;
-        this.coolDown = coolDown;
+    constructor(name: string, data: CommandOptional) {
+        let realName = name;
+        if (!realName.startsWith('!')) {
+            realName = `!${realName}`;
+        }
+        this.name = realName;
+        this.message = data.message || '';
+        this.userLevel = data.userLevel || UserLevel.Everyone;
+        this.coolDown = data.coolDown || 5;
     }
 
     isEqual(c: Command): boolean {
