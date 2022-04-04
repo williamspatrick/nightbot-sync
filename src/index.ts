@@ -1,10 +1,47 @@
-import 'dotenv/config';
+import express from 'express';
+import { TokenCallback } from './oauth';
+import * as Nightbot from './nightbot';
 
-if (
-    !('NIGHTBOT_CLIENT_ID' in process.env)
-    || !('NIGHTBOT_CLIENT_SECRET' in process.env)
-) {
-    console.log("Couldn't find Nightbot settings");
-    console.log('   Add NIGHTBOT_CLIENT_ID and NIGHTBOT_CLIENT_SECRET');
-    process.exit(1);
-}
+const app = express();
+const port = 4000; // default port to listen
+
+// start the Express server
+app.listen(port, () => {
+    console.log(`server started at http://localhost:${port}`);
+});
+
+TokenCallback(app, port, async (token: string) => {
+    const currentCommands = await Nightbot.commands(token);
+    console.log('Current Commands', currentCommands);
+
+    const commands: { [key: string]: Nightbot.Command } = {
+        '!awesome': new Nightbot.Command(
+            '!awesome',
+            '$(user) is pretty awesome.',
+        ),
+    };
+
+    currentCommands.forEach(async (c) => {
+        console.log(`Command: ${c.name}`);
+
+        if (c.name in commands) {
+            if (commands[c.name].isEqual(c)) {
+                console.log('Found.');
+                delete commands[c.name];
+            } else {
+                console.log('Updating');
+                commands[c.name].copyId(c);
+                await Nightbot.updateCommand(token, commands[c.name]);
+                delete commands[c.name];
+            }
+        } else {
+            console.log('Deleting');
+            await Nightbot.deleteCommand(token, c);
+        }
+    });
+
+    Object.keys(commands).forEach(async (key) => {
+        console.log(`Adding new command: ${key}`);
+        await Nightbot.addCommand(token, commands[key]);
+    });
+});
